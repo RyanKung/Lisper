@@ -46,7 +46,7 @@ When reporting about Common Lisp or Emacs Lisp code, write in short declarative 
 
 10. Resource lifetime is bounded by dynamic extent. Never pair manual allocation and cleanup across fallible expressions. Wrap every temporary buffer change, point movement, file handle, process, socket, or hook installation in `unwind-protect` (or `with-open-file`, `with-temp-buffer`, `save-excursion`, `save-restriction`, `save-match-data`). Non-local exits (`throw`, `return-from`, `signal`, `error`) must leave global state and buffers clean.
 
-11. Size and parenthesis layout are structural signals. Keep each source file under 1000 lines and each `defun` / `defmacro` under 80 lines. Never place closing parentheses `)))` alone on trailing lines. Indent according to standard Lisp form semantics (declaring `(declare (indent ...))` on every Elisp macro). Split files by domain proposition, not vague `utils` buckets.
+11. Size and parenthesis layout are structural signals. Keep each source file under 1000 lines and each `defun` / `defmacro` **executable body** (excluding its docstring and `declare` forms) under 80 lines. Never truncate docstrings, delete explanatory comments, or pack multiple sequential side-effecting forms onto a single line to game line-count limits. Never place closing parentheses `)))` alone on trailing lines. Indent according to standard Lisp form semantics (declaring `(declare (indent ...))` on every Elisp macro). Split files and functions by domain proposition, not by arbitrary line-count slices or vague `utils` buckets.
 
 12. Logic deserves a name. Do not expose raw `car`/`cdr`/`nth` chains (`cadddr`), nested `assoc`/`plist-get` plumbing, or multi-clause `and`/`or`/`not` expressions at the call site when they express a domain proposition. Define named accessors and semantic predicates ending in `-p` or `p` (e.g., `order-matchable-p`, `same-principal-p`, `session-active-p`).
 
@@ -142,10 +142,10 @@ Also avoid deep positional list access (`(cadddr record)`, `(nth 4 item)`) in do
 Start from the domain and respect the dialect's functional semantics.
 
 - **Currying, Partial Application, and Combinators**:
-  - Never decompose a long function by extracting a procedural helper with 7+ positional parameters that mirror the caller's `let*` bindings.
-  - Instead, curry invariant context into lexical closures (`(defun domain--matcher (query role) (lambda (event) ...))` or `(apply-partially #'fn fixed-arg)`) and compose small unary/binary transformations: $f \circ g = \lambda x.\, f(g(x))$.
-  - Replace repetitive imperative polling, retry, or resource-bracket patterns with higher-order combinators that accept a thunk or step function `(funcall step item)` and return values.
-  - Express multi-branch syntax or protocol dispatch via declarative alist/plist dispatch tables mapping symbols to functions rather than sprawling `cond` ladders.
+  - Never decompose a long function by extracting a procedural helper with 6+ positional parameters that mirror the caller's `let*` bindings, or by slicing a `let*` into single-use `foo--part-1` / `foo--part-2` subroutines.
+  - Never introduce "fake currying" (e.g., `(lambda (getter-fn) (lambda () ...))`) to simulate a lexical scope that a local `let*` already provides.
+  - Instead, curry genuine domain invariants into lexical closures (`(defun domain--matcher (query role) (lambda (event) ...))` or `(apply-partially #'fn fixed-arg)`) and compose small unary/binary transformations: $f \circ g = \lambda x.\, f(g(x))$.
+  - Replace repetitive imperative polling, cycle-safe graph traversal, or resource-bracket patterns with higher-order combinators that accept a step function `(funcall step item)` and return values.
 - **Equality precision**: Never use `eq` where `eql` (numbers/characters), `equal` (structural strings/lists), or `equalp` / domain equality is required. Choose the tightest equality predicate that matches the type's equivalence relation, and pass `:test #'equal` explicitly to `assoc`, `member`, `gethash`, `remove`, and `cl-find` when keys are strings or composite values.
 - **Emacs Lisp specifics**:
   - Line 1 must declare `;; -*- lexical-binding: t; -*-`.
