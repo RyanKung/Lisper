@@ -26,9 +26,9 @@ When reporting about Common Lisp or Emacs Lisp code, write in short declarative 
 
 1. Code pictures a model. S-expressions are syntax trees before they are text. Preserve every real state of the problem. Use symbols, tagged structures (`defstruct` / `cl-defstruct`), CLOS classes, or algebraic alists/plists with explicit constructors. Erase only distinctions that are not semantically used.
 
-2. Functions compose before macros rewrite. Never write a macro where a higher-order function suffices. Introduce a macro only to control evaluation, bind lexical symbols, define a declarative domain construct, or eliminate compile-time syntactic boilerplate. Every macro must evaluate value arguments at most once in left-to-right order and bind temporary variables with `gensym` / `make-symbol` (`with-gensyms`).
+2. Higher-order functions compose before macros rewrite. Lisp is lambda calculus first: functions are first-class values, closures carry lexical environments, and currying (`apply-partially` or returning `(lambda (x) ...)`) replaces multi-parameter plumbing. When the same structure appears twice, inspect it; when it appears three times, abstract it with a higher-order combinator, curried closure, or generic function—never a 10-argument procedural helper. Introduce a macro only to control evaluation, bind lexical symbols, or eliminate compile-time boilerplate. Every macro must evaluate value arguments at most once in left-to-right order and bind temporaries with `gensym` / `make-symbol` (`with-gensyms`).
 
-3. Pure data transforms stay outside the image's mutable world. Separate pure symbolic/list/structure transformations from buffer mutation, process IO, filesystem state, network streams, timers, and global specials (`*earmuffs*`). Core functions take values and return values. Host effects (Emacs buffers/windows/frames or CL streams/sockets/threads) stay in named boundary functions.
+3. Pure data transforms stay outside the image's mutable world. Prefer catamorphisms (`cl-reduce` / `seq-reduce`), homomorphic mappings (`mapcar` / `seq-keep`), and predicate pipelines (`seq-filter`) over imperative `let` + `setq` + `push` + `nreverse` loops. Separate pure symbolic/list/structure transformations from buffer mutation, process IO, filesystem state, network streams, timers, and global specials (`*earmuffs*`). Core functions take values and return values. Host effects stay in named boundary functions.
 
 4. Lexical scope is the default law. Every Emacs Lisp file must begin with `;; -*- lexical-binding: t; -*-` on line 1. Every dynamic special variable in Common Lisp or Emacs Lisp must wear `*earmuffs*` (or `+plus-signs+` for constants in CL) and be rebound dynamically with `let` rather than mutated globally with `setq` / `setf`, unless changing global configuration is the explicit contract.
 
@@ -139,8 +139,13 @@ Also avoid deep positional list access (`(cadddr record)`, `(nth 4 item)`) in do
 
 ## Implementation Discipline
 
-Start from the domain and respect the dialect's semantics.
+Start from the domain and respect the dialect's functional semantics.
 
+- **Currying, Partial Application, and Combinators**:
+  - Never decompose a long function by extracting a procedural helper with 7+ positional parameters that mirror the caller's `let*` bindings.
+  - Instead, curry invariant context into lexical closures (`(defun domain--matcher (query role) (lambda (event) ...))` or `(apply-partially #'fn fixed-arg)`) and compose small unary/binary transformations: $f \circ g = \lambda x.\, f(g(x))$.
+  - Replace repetitive imperative polling, retry, or resource-bracket patterns with higher-order combinators that accept a thunk or step function `(funcall step item)` and return values.
+  - Express multi-branch syntax or protocol dispatch via declarative alist/plist dispatch tables mapping symbols to functions rather than sprawling `cond` ladders.
 - **Equality precision**: Never use `eq` where `eql` (numbers/characters), `equal` (structural strings/lists), or `equalp` / domain equality is required. Choose the tightest equality predicate that matches the type's equivalence relation, and pass `:test #'equal` explicitly to `assoc`, `member`, `gethash`, `remove`, and `cl-find` when keys are strings or composite values.
 - **Emacs Lisp specifics**:
   - Line 1 must declare `;; -*- lexical-binding: t; -*-`.
