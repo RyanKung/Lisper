@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lisper"
+  short_description: "Strict Common Lisp and Emacs Lisp engineering discipline"
+  default_prompt: "Use $lisper to write or review Common Lisp and Emacs Lisp code with clear grouped assertions, warning-free compilation, hygienic macros, structured conditions, lexical-binding discipline, pure functional cores, semantic predicates, non-destructive list semantics, and bounded code size."
